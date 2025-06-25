@@ -1,0 +1,6 @@
+[submodule "Assets/Cyl/Hexagons"]
+	path = Assets/Cyl/Hexagons
+	url = git@github.com:tioalexis/Unity.Hexagons.git
+[submodule "Assets/Cyl/StateMachines"]
+	path = Assets/Cyl/StateMachines
+	url = git@github.com:tioalexis/Unity.StateMachines.git
