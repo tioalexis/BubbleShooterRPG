@@ -1,4 +1,5 @@
 using System;
+using Cyl.BubbleShooter.Bubbles;
 using Cyl.BubbleShooter.Grid;
 using Cyl.Common.Utils;
 using Cyl.Hexagons;
@@ -7,10 +8,39 @@ using UnityEngine.InputSystem;
 
 namespace Cyl.BubbleShooter.Gameplay
 {
+    /// <summary>
+    /// The launcher is responsible for handling the aiming and launching of bubbles in the game.
+    /// It receives input from the player to aim and launch bubbles, calculates the trajectory of the bubble,
+    /// then launches the bubble along that trajectory.
+    /// </summary>
     public class BubbleLauncher : MonoBehaviour
     {
-        private const int MaxTrajectoryPoints = 8; // Maximum number of points in the trajectory
+        /// <summary>
+        /// Maximum number of points in the trajectory.
+        /// If the trajectory exceeds this number, it will be truncated.
+        /// </summary>
+        private const int MaxTrajectoryPoints = 8;
         
+        /// <summary>
+        /// The maximum length of the raycast used to determine the trajectory of the bubble.
+        /// </summary>
+        private const float MaxRaycastLength = 20f;
+        
+        /// <summary>
+        /// The name for the input action that triggers the launch of a bubble.
+        /// </summary>
+        private const string LaunchAction = "Launch";
+        
+        /// <summary>
+        /// The name for the input action that allows the player to aim the bubble launcher.
+        /// </summary>
+        private const string AimAction = "Aim";
+        
+        /// <summary>
+        /// The name for the input action that cycles through the bubble queue.
+        /// </summary>
+        private const string CycleAction = "Cycle";
+
         private struct CalculateTrajectoryResult
         {
             public Vector2[] Points;
@@ -19,12 +49,20 @@ namespace Cyl.BubbleShooter.Gameplay
             public Hex? LandingCoord;
         }
 
-        public event Action<Vector2[], Hex> OnBubbleLaunched;
+        /// <summary>
+        /// Invoked when a bubble is launched.
+        /// </summary>
+        public event Action<Bubble, Hex> OnBubbleLaunched;
+        
+        /// <summary>
+        /// Invoked when a bubble lands on the grid after being launched.
+        /// </summary>
+        public event Action<Bubble, Hex> OnBubbleLanded;
         
         [SerializeField] private Camera gameCamera;
         [SerializeField] private PlayerInput playerInput;
         [SerializeField] private BubbleGrid bubbleGrid;
-        [SerializeField] private Transform activeBubblePoint;
+        [SerializeField] private BubbleQueue bubbleQueue;
         
         [Tooltip("Layer mask for objects that can bounce the bubble.")]
         [SerializeField] private LayerMask bounceLayerMask;
@@ -37,45 +75,69 @@ namespace Cyl.BubbleShooter.Gameplay
         [SerializeField] private float maxAimAngle = 160f;
 
         private readonly Vector2[] _aimTrajectory = new Vector2[MaxTrajectoryPoints];
-        private Hex? _landingCoord = null;
         private CalculateTrajectoryResult? _currentTrajectory = null;
         
+        /// <summary>
+        /// Where the player is aiming in screen coordinates.
+        /// </summary>
         public Vector2 AimPosition { get; private set; }
+        
+        /// <summary>
+        /// Whether the player is currently aiming.
+        /// This is true when the player is holding down the aim button or the screen is being touched.
+        /// </summary>
         public bool IsAiming { get; private set; }
+        
+        /// <summary>
+        /// Whether the launcher is currently in the process of launching a bubble.
+        /// This is true when the bubble is being moved along the trajectory after the launch action is performed.
+        /// </summary>
         public bool IsLaunching { get; private set; }
+        
+        /// <summary>
+        /// Reference to the last bubble that was launched.
+        /// </summary>
+        public Bubble LastBubbleLaunched { get; private set; }
         
         private void Awake()
         {
-            playerInput.actions["Launch"].performed += OnLaunch;
-            playerInput.actions["Launch"].canceled += OnLaunch;
-            playerInput.actions["Aim"].performed += OnAim;
+            playerInput.actions[LaunchAction].performed += OnLaunch;
+            playerInput.actions[LaunchAction].canceled += OnLaunch;
+            playerInput.actions[AimAction].performed += OnAim;
+            playerInput.actions[CycleAction].performed += OnCycleQueue;
         }
 
         private void OnDestroy()
         {
-            playerInput.actions["Launch"].performed -= OnLaunch;
-            playerInput.actions["Launch"].canceled -= OnLaunch;
-            playerInput.actions["Aim"].performed -= OnAim;
+            playerInput.actions[LaunchAction].performed -= OnLaunch;
+            playerInput.actions[LaunchAction].canceled -= OnLaunch;
+            playerInput.actions[AimAction].performed -= OnAim;
+            playerInput.actions[CycleAction].performed -= OnCycleQueue;
         }
         
         private void HandleBubbleLaunch()
         {
+            if (bubbleQueue.ActiveBubble == null)
+            {
+                Debug.LogError("Attempted to launch bubble without an active bubble in the queue.");
+                return;
+            }
+            
             if (_currentTrajectory == null)
             {
-                Debug.LogError("Attempted to launch bubble without a valid trajectory. Ignoring launch.");
+                Debug.LogError("Attempted to launch bubble without a valid trajectory.");
                 return;
             }
             
             var trajectoryResult = _currentTrajectory.Value;
             if (trajectoryResult.Length < 2)
             {
-                Debug.LogError($"Invalid trajectory length: {trajectoryResult.Length}. Cannot launch bubble.");
+                Debug.LogError($"Attempted to launch bubble with an invalid trajectory length: {trajectoryResult.Length}. Expected at least 2 points.");
                 return;
             }
                 
             if (IsTrajectoryTooSteep(trajectoryResult.Angle))
             {
-                Debug.LogWarning("Trajectory is too steep. Launch aborted.");
                 return;
             }
 
@@ -125,7 +187,11 @@ namespace Cyl.BubbleShooter.Gameplay
             if (!calculatedTrajectory.LandingCoord.HasValue)
                 throw new InvalidOperationException("Cannot launch bubble without a valid trajectory.");
             
+            var bubble = bubbleQueue.ActiveBubble;
+            bubble.SetColliderEnabled(false);
+            
             IsLaunching = true;
+            OnBubbleLaunched?.Invoke(bubble, calculatedTrajectory.LandingCoord.Value);
             
             var landingWorldPosition = bubbleGrid.GetWorldPosition(calculatedTrajectory.LandingCoord.Value);
             for (var i = 0; i < calculatedTrajectory.Length - 1; i++)
@@ -140,20 +206,23 @@ namespace Cyl.BubbleShooter.Gameplay
                 for (var j = 0; j < stepCount; j++)
                 {
                     var stepPosition = Vector2.Lerp(from, to, ((float)j / stepCount));
-                    DebugDraw.X(stepPosition, Color.aquamarine);
+                    bubbleQueue.ActiveBubble.transform.position = stepPosition;
                     await Awaitable.FixedUpdateAsync();
                 }
             }
             
-            DebugDraw.X(landingWorldPosition, Color.green);
-
+            bubble.SetColliderEnabled(true);
+            bubbleGrid.AddElement(bubble, calculatedTrajectory.LandingCoord.Value);
+            bubbleQueue.RemoveBubble(bubble);
+            
             IsLaunching = false;
+            LastBubbleLaunched = bubble;
+            OnBubbleLanded?.Invoke(bubble, calculatedTrajectory.LandingCoord.Value);
         }
 
         private CalculateTrajectoryResult CalculateTrajectory()
         {
-            const float maxLength = 20f; // Maximum length of the trajectory
-            
+            var activeBubblePoint = bubbleQueue.ActiveBubbleSpawnPoint;
             var originWorldPosition = (Vector2)activeBubblePoint.position;
             _aimTrajectory[0] = originWorldPosition;
             
@@ -164,18 +233,13 @@ namespace Cyl.BubbleShooter.Gameplay
             var bounceOffset = bubbleGrid.CellSize;
             while (trajectoryIndex < _aimTrajectory.Length)
             {
-                var boxSize = bubbleGrid.CellSize * Vector2.one;
-                var hit = Physics2D.BoxCast(originWorldPosition, boxSize, 0, aimDirection, maxLength, combinedLayerMask);
+                var boxSize = 0.5f * bubbleGrid.CellSize * Vector2.one;
+                var hit = Physics2D.BoxCast(originWorldPosition, boxSize, 0, aimDirection, MaxRaycastLength, combinedLayerMask);
                 if (!hit)
                 {
                     break;
                 }
-
-                // We hit something, so we update the trajectory
-                BoxCastDrawer.Draw(hit, originWorldPosition, boxSize, 0, aimDirection, maxLength);
-                aimDirection = new Vector2(-aimDirection.x, aimDirection.y);
-                originWorldPosition = hit.point + aimDirection * bounceOffset;
-
+                
                 // If we hit a wall, we store the hit point and continue
                 var hitLayer = hit.collider.gameObject.layer;
                 if (bounceLayerMask.Contains(hitLayer))
@@ -188,10 +252,15 @@ namespace Cyl.BubbleShooter.Gameplay
                 else if (terminateLayerMask.Contains(hitLayer))
                 {
                     var reverseDir = (hit.point - originWorldPosition).normalized;
-                    _aimTrajectory[trajectoryIndex] = hit.point + reverseDir * bounceOffset;
+                    _aimTrajectory[trajectoryIndex] = hit.point - reverseDir * bubbleGrid.CellSize;
                     trajectoryIndex++;
                     break;
                 }
+                
+                // We hit something, so we update the trajectory
+                BoxCastDrawer.Draw(hit, originWorldPosition, boxSize, 0, aimDirection, MaxRaycastLength);
+                aimDirection = new Vector2(-aimDirection.x, aimDirection.y);
+                originWorldPosition = hit.point + aimDirection * bounceOffset;
             }
             
             // Remove any segments that are too close together
@@ -217,6 +286,13 @@ namespace Cyl.BubbleShooter.Gameplay
             if (bubbleGrid.IsValidPosition(rawLandingCoord))
                 if (bubbleGrid.FindNearestUnoccupiedGridPosition(lastPoint, out var nearestUnoccupiedHex))
                     safeLandingCoord = nearestUnoccupiedHex;
+            
+            // Make sure the trajectory ends at the landing position
+            if (safeLandingCoord.HasValue)
+            {
+                var landingWorldPosition = bubbleGrid.GetWorldPosition(safeLandingCoord.Value);
+                _aimTrajectory[trajectoryIndex - 1] = landingWorldPosition;
+            }
             
             var result = new CalculateTrajectoryResult
             {
@@ -284,14 +360,36 @@ namespace Cyl.BubbleShooter.Gameplay
                 HandleTrajectoryView();
             }
         }
+        
+        private void OnCycleQueue(InputAction.CallbackContext context)
+        {
+            if (IsLaunching)
+                return;
+            
+            // If the input is performed from a non-keyboard device, we first check if the
+            // aim position matches the queue touch collider.
+            if (!context.control.device.IsKeyboard())
+            {
+                var touchWorldPosition = gameCamera.ScreenToWorldPoint(new Vector3(AimPosition.x, AimPosition.y, gameCamera.nearClipPlane));
+                var queueTouchCollider = bubbleQueue.TouchCollider;
+                if (queueTouchCollider == null || !queueTouchCollider.OverlapPoint(touchWorldPosition))
+                {
+                    return;
+                }
+            }
+            
+            bubbleQueue.CycleQueue();
+        }
 
         private void OnDrawGizmosSelected()
         {
-            if (gameCamera == null || activeBubblePoint == null)
+            if (gameCamera == null || bubbleQueue == null)
                 return;
             
-            // Draw valid angles for aiming
             const float angleLineLength = 10f; // Length of the angle lines
+            
+            // Draw valid angles for aiming
+            var activeBubblePoint = bubbleQueue.ActiveBubbleSpawnPoint;
             var originWorldPosition = activeBubblePoint.position;
             var minAngle = minAimAngle * Mathf.Deg2Rad;
             var maxAngle = maxAimAngle * Mathf.Deg2Rad;
@@ -308,14 +406,6 @@ namespace Cyl.BubbleShooter.Gameplay
             aimWorldPosition.z = 0f; // Ensure the position is in the 2D plane
             Gizmos.color = IsAiming ? Color.green : Color.red;
             Gizmos.DrawWireSphere(aimWorldPosition, 0.5f);
-            
-            // Draw the landing position if it has been calculated
-            if (_landingCoord.HasValue)
-            {
-                var landingWorldPosition = bubbleGrid.GetWorldPosition(_landingCoord.Value);
-                Gizmos.color = Color.orangeRed;
-                Gizmos.DrawWireSphere(landingWorldPosition, 0.5f);
-            }
         }
     }
 }

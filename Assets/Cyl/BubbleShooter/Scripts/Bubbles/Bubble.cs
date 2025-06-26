@@ -5,12 +5,21 @@ using UnityEngine;
 
 namespace Cyl.BubbleShooter.Bubbles
 {
+    [RequireComponent(typeof(Collider2D))]
     public class Bubble : MonoBehaviour, IHexGridElement
     {
         private readonly Dictionary<Type, BubbleComponent> _components = new();
+        private Collider2D _collider2D;
         
         public Hex GridPosition { get; set; }
         
+        public string BubbleType { get; set; }
+
+        private void Awake()
+        {
+            _collider2D = GetComponent<Collider2D>();
+        }
+
         public T GetBubbleComponent<T>() where T : BubbleComponent
         {
             if (_components.TryGetValue(typeof(T), out var foundComponent))
@@ -32,6 +41,18 @@ namespace Cyl.BubbleShooter.Bubbles
 
             component = null;
             return false;
+        }
+        
+        public void SetColliderEnabled(bool enabled)
+        {
+            if (_collider2D != null)
+            {
+                _collider2D.enabled = enabled;
+            }
+            else
+            {
+                Debug.LogError("Collider2D not found on bubble " + name);
+            }
         }
 
         public void OnSpawn()

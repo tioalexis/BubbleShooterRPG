@@ -33,6 +33,15 @@
                     "initialStateCheck": false
                 },
                 {
+                    "name": "Cycle",
+                    "type": "Button",
+                    "id": "a2dda86b-ccdb-4736-baaf-b927f16aab80",
+                    "expectedControlType": "",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": false
+                },
+                {
                     "name": "Aim",
                     "type": "PassThrough",
                     "id": "e862f7c1-3e28-4a12-84fc-de70a852dd69",
@@ -71,7 +80,7 @@
                     "path": "<Mouse>/leftButton",
                     "interactions": "",
                     "processors": "",
-                    "groups": "",
+                    "groups": ";Keyboard&Mouse",
                     "action": "Launch",
                     "isComposite": false,
                     "isPartOfComposite": false
@@ -82,7 +91,7 @@
                     "path": "<Touchscreen>/Press",
                     "interactions": "",
                     "processors": "",
-                    "groups": "",
+                    "groups": ";Touch",
                     "action": "Launch",
                     "isComposite": false,
                     "isPartOfComposite": false
@@ -93,8 +102,41 @@
                     "path": "<Pointer>/position",
                     "interactions": "",
                     "processors": "",
-                    "groups": "",
+                    "groups": ";Keyboard&Mouse;Touch",
                     "action": "Aim",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "564db042-faf0-4afa-8f4a-7e6d272041cc",
+                    "path": "<Keyboard>/space",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": ";Keyboard&Mouse",
+                    "action": "Cycle",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "a3cebc34-0811-4fe6-9037-09c8ee2dff89",
+                    "path": "<Mouse>/leftButton",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": ";Keyboard&Mouse",
+                    "action": "Cycle",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "545b8a3a-5c4d-42a0-9d43-121357389d19",
+                    "path": "<Touchscreen>/Press",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Cycle",
                     "isComposite": false,
                     "isPartOfComposite": false
                 }

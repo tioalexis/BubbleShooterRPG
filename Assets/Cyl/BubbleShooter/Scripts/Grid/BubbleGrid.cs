@@ -1,4 +1,7 @@
+using System;
+using System.Collections.Generic;
 using Cyl.BubbleShooter.Bubbles;
+using Cyl.BubbleShooter.Gameplay;
 using Cyl.Hexagons;
 using UnityEngine;
 
@@ -9,7 +12,7 @@ namespace Cyl.BubbleShooter.Grid
         [SerializeField] private int width = 11;
         [SerializeField] private int height = 20;
         [SerializeField] private float scale = 1f;
-        [SerializeField] private Transform bubbleRoot;
+        [SerializeField] private Transform rootTransform;
         
         private Bubble[] _bubbles;
 
@@ -25,10 +28,12 @@ namespace Cyl.BubbleShooter.Grid
         /// <inheritdoc/>
         public override float CellUnitScale => scale;
 
+        /// <inheritdoc/>
+        public override Transform RootTransform => rootTransform;// ?? transform;
+
         private void Awake()
         {
             _bubbles = new Bubble[width * height];
-            Debug.Log("BubbleGrid initialized with " + _bubbles.Length + " slots.");
         }
 
         /// <summary>
@@ -44,10 +49,11 @@ namespace Cyl.BubbleShooter.Grid
             if (!base.AddElement(element, col, row))
                 return false;
             
-            var parent = bubbleRoot ?? transform;
+            var parent = rootTransform ?? transform;
             element.transform.SetParent(parent);
             element.transform.position = GetWorldPosition(col, row);
             element.name = $"Bubble ({col}, {row})";
+            element.SetColliderEnabled(true);
             
             return true;
         }
@@ -68,10 +74,152 @@ namespace Cyl.BubbleShooter.Grid
 
             if (element)
             {
-                Destroy(element.gameObject);
+                element.transform.SetParent(null);
+                element.SetColliderEnabled(false);
             }
             
             return true;
+        }
+        
+        /// <summary>
+        /// Uses breadth-first search to find all connected bubbles starting from the given origin hex.
+        /// This version returns a new array containing the found bubbles. If you need to call this method frequently,
+        /// consider using <see cref="FindConnectedBubblesNonAlloc"/> instead to avoid unnecessary allocations.
+        /// </summary>
+        /// <param name="origin">The starting hex position to search from.</param>
+        /// <param name="criteria">The criteria to filter bubbles. Only bubbles that match this predicate will be included in the results.</param>
+        /// <returns>An array of bubbles that are connected to the origin hex and match the criteria.</returns>
+        public Bubble[] FindConnectedBubbles(Hex origin, Predicate<Bubble> criteria)
+        {
+            var results = new Bubble[width * height];
+            FindConnectedBubblesNonAlloc(origin, criteria, results);
+            return results;
+        }
+        
+        /// <summary>
+        /// Uses breadth-first search to find all connected bubbles starting from the given origin hex.
+        /// This version requires a pre-allocated results array to store the found bubbles for performance reasons.
+        /// </summary>
+        /// <param name="origin">The starting hex position to search from.</param>
+        /// <param name="criteria">The criteria to filter bubbles. Only bubbles that match this predicate will be included in the results.</param>
+        /// <param name="results">An array to store the found bubbles. It should be large enough to hold all possible connected bubbles.</param>
+        /// <returns>The number of bubbles found that match the criteria.</returns>
+        public int FindConnectedBubblesNonAlloc(Hex origin, Predicate<Bubble> criteria, Bubble[] results)
+        {
+            // Make sure the results array is cleared before use
+            Array.Clear(results, 0, results.Length);
+
+            // Assign a default criteria if none is provided
+            criteria ??= (bubble) => bubble != null;
+            
+            var count = 0;
+            var queue = new Queue<Hex>();
+            queue.Enqueue(origin);
+            
+            var visited = new HashSet<Hex> { origin };
+            while (queue.Count > 0)
+            {
+                var currentHex = queue.Dequeue();
+                var bubble = GetElement(currentHex);
+
+                if (bubble == null || !criteria(bubble)) 
+                    continue;
+                
+                // Resize the connected bubbles array if necessary
+                if (count >= results.Length)
+                {
+                    var nextSize = Mathf.NextPowerOfTwo(results.Length * 2);
+                    Array.Resize(ref results, nextSize);
+                    Debug.LogWarning($"Results array is full. Consider increasing its size. " +
+                                     $"Current count: {count}, Max size: {results.Length}, Resized to: {nextSize}");
+                }
+                
+                results[count++] = bubble;
+                
+                foreach (var direction in Hex.Directions)
+                {
+                    var neighborHex = currentHex + direction;
+                    if (IsValidPosition(neighborHex) && visited.Add(neighborHex))
+                    {
+                        queue.Enqueue(neighborHex);
+                    }
+                }
+            }
+
+            return count;
+        }
+
+        public List<BubbleCluster> FindClusters()
+        {
+            var result = new List<BubbleCluster>();
+            
+            // Find clusters of bubbles first
+            var visited = new HashSet<Bubble>();
+            for (var row = 0; row < Height; row++)
+            for (var col = 0; col < Width; col++)
+            {
+                var bubble = GetElement(col, row);
+                if (bubble == null || visited.Contains(bubble)) 
+                    continue;
+                
+                // Start a new cluster
+                var bubbles = new HashSet<Bubble>();
+                var queue = new Queue<Bubble>();
+                queue.Enqueue(bubble);
+
+                while (queue.Count > 0)
+                {
+                    var currentBubble = queue.Dequeue();
+                    if (visited.Contains(currentBubble))
+                        continue;
+
+                    visited.Add(currentBubble);
+                    bubbles.Add(currentBubble);
+
+                    // Check neighbors
+                    for (var i = 0; i < Hex.Directions.Length; i++)
+                    {
+                        var neighborHex = currentBubble.GridPosition + Hex.Directions[i];
+                        if (!IsValidPosition(neighborHex))
+                            continue;
+                        
+                        var neighborBubble = GetElement(neighborHex);
+                        if (neighborBubble != null && !visited.Contains(neighborBubble))
+                        {
+                            queue.Enqueue(neighborBubble);
+                        }
+                    }
+                }
+                
+                var cluster = new BubbleCluster(bubbles);
+                result.Add(cluster);
+            }
+            
+            // Now check which clusters are anchored
+            foreach (var cluster in result)
+            {
+                foreach (var bubble in cluster.Bubbles)
+                {
+                    if (!IsBubbleAnchored(bubble)) 
+                        continue;
+                    
+                    cluster.IsAnchored = true;
+                    break; // No need to check further bubbles in this cluster
+                }
+            }
+            
+            return result;
+        }
+
+        private bool IsBubbleAnchored(Bubble bubble)
+        {
+            if (bubble == null)
+                return false;
+            if (bubble.GridPosition.Row == height - 1)
+                return true;
+            // if (bubble.TryGetComponent<AnchorComponent>(out var anchorComponent))
+            //     return anchorComponent.IsAnchored;
+            return false;
         }
     }
 }

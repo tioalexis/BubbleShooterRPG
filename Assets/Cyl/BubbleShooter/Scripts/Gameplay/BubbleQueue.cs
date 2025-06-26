@@ -1,37 +1,145 @@
-using System;
 using System.Collections.Generic;
 using Cyl.BubbleShooter.BubbleComponents;
 using Cyl.BubbleShooter.Bubbles;
 using Cyl.BubbleShooter.Grid;
 using UnityEngine;
+using UnityEngine.InputSystem;
 using Random = System.Random;
 
 namespace Cyl.BubbleShooter.Gameplay
 {
+    /// <summary>
+    /// The queue is responsible for managing the bubbles that are currently in the queue to be launched.
+    /// It is also responsible for generating new bubbles and ensuring that the queue is always filled with bubbles.
+    /// </summary>
     public class BubbleQueue : MonoBehaviour
     {
-        [SerializeField] private BubbleFactory bubbleFactory;
-        [SerializeField] private BubbleGrid bubbleGrid;
-        [SerializeField] private Transform[] spawnPoints;
-        
-        private readonly Random _random = new();
-        private readonly List<BubbleColor> _bubbleColorHistory = new();
-        
         private static readonly BubbleColor[] DefaultColorPool = 
         {
             BubbleColor.ColorA,
             BubbleColor.ColorB,
             BubbleColor.ColorC
         };
+        
+        [SerializeField] private PlayerInput playerInput;
+        [SerializeField] private BubbleFactory bubbleFactory;
+        [SerializeField] private BubbleGrid bubbleGrid;
+        [SerializeField] private Transform[] spawnPoints;
+        [SerializeField] private Collider2D touchCollider;
+        
+        private readonly Random _random = new();
+        private readonly List<BubbleColor> _bubbleColorHistory = new();
+        private Bubble[] _queue;
+        
+        public Bubble ActiveBubble => _queue[0];
+        
+        public Transform ActiveBubbleSpawnPoint => spawnPoints[0];
+        
+        public Collider2D TouchCollider => touchCollider;
+
+        private void Awake()
+        {
+            _queue = new Bubble[spawnPoints.Length];
+        }
+        
+        public void PrepareQueue()
+        {
+            // Move remaining bubbles to the beginning of the queue
+            for (var i = 0; i < _queue.Length; i++)
+            {
+                if (_queue[i] != null) 
+                    continue;
+                
+                for (var j = i + 1; j < _queue.Length; j++)
+                {
+                    if (_queue[j] == null) 
+                        continue;
+                    
+                    _queue[i] = _queue[j];
+                    _queue[j] = null;
+                    break;
+                }
+            }
+            
+            // Generate new bubbles for empty slots
+            for (var i = 0; i < _queue.Length; i++)
+            {
+                if (_queue[i] != null) 
+                    continue;
+                
+                var bubble = GenerateBubble();
+                if (bubble == null)
+                    continue;
+                
+                bubble.transform.SetParent(transform);
+                bubble.SetColliderEnabled(false);
+                _queue[i] = bubble;
+            }
+            
+            // Move the bubbles to their respective spawn points
+            for (var i = 0; i < _queue.Length; i++)
+            {
+                if (_queue[i] == null) 
+                    continue;
+                
+                _queue[i].transform.position = spawnPoints[i].position;
+                _queue[i].transform.rotation = spawnPoints[i].rotation;
+            }
+        }
+        
+        public void CycleQueue()
+        {
+            if (_queue.Length == 0)
+                return;
+                
+            var firstBubble = _queue[0];
+            for (var i = 0; i < _queue.Length - 1; i++)
+            {
+                _queue[i] = _queue[i + 1];
+                if (_queue[i] != null)
+                {
+                    _queue[i].transform.position = spawnPoints[i].position;
+                    _queue[i].transform.rotation = spawnPoints[i].rotation;
+                }
+            }
+            _queue[^1] = firstBubble;
+                
+            if (_queue[^1] != null)
+            {
+                _queue[^1].transform.position = spawnPoints[^1].position;
+                _queue[^1].transform.rotation = spawnPoints[^1].rotation;
+            }
+        }
 
         public Bubble GenerateBubble()
         {
-            var bubbleColor = EvaluateNextBubbleColor();
             var bubble = bubbleFactory.GetBubble(BubbleType.ColoredBubble);
+            if (bubble == null)
+            {
+                Debug.LogError("Failed to generate bubble: BubbleFactory returned null.");
+                return null;
+            }
+            
+            var bubbleColor = EvaluateNextBubbleColor();
             if (bubble.TryGetBubbleComponent<ColorComponent>(out var colorComponent))
                 colorComponent.Color = bubbleColor;
+            
             RecordBubbleColor(bubbleColor);
             return bubble;
+        }
+        
+        public void RemoveBubble(Bubble bubble)
+        {
+            for (var i = 0; i < _queue.Length; i++)
+            {
+                if (_queue[i] != bubble) 
+                    continue;
+                
+                _queue[i] = null;
+                return;
+            }
+            
+            Debug.LogWarning("Bubble not found in queue: " + bubble.name);
         }
 
         private BubbleColor EvaluateNextBubbleColor()

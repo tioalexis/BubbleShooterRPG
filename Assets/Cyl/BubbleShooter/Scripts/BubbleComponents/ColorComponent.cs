@@ -25,8 +25,13 @@ namespace Cyl.BubbleShooter.BubbleComponents
                 _color = value;
                 foreach (var mapping in colorGameObjectMappings)
                 {
+                    if (mapping.gameObject == null)
+                    {
+                        // Debug.LogError($"GameObject for color {mapping.color} is not assigned in ColorComponent on bubble {name}.");
+                        continue;
+                    }
+                    
                     mapping.gameObject.SetActive(mapping.color == _color);
-                    Debug.Log($"gameObject:{mapping.gameObject.name} color:{_color} active:{mapping.gameObject.activeSelf}");
                 }
             }
         }
