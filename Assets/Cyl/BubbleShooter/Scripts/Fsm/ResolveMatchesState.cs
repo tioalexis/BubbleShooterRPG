@@ -1,6 +1,9 @@
 using System;
+using System.Collections.Generic;
 using Cyl.BubbleShooter.BubbleComponents;
 using Cyl.BubbleShooter.Bubbles;
+using Cyl.Common.Utils;
+using UnityEngine;
 
 namespace Cyl.BubbleShooter.Fsm
 {
@@ -11,6 +14,16 @@ namespace Cyl.BubbleShooter.Fsm
     /// </summary>
     public class ResolveMatchesState : BubbleShooterFsmState
     {
+        /// <summary>
+        /// How much damage is applied to each bubble when resolving matches.
+        /// </summary>
+        private const int DamageAppliedOnMatch = 1;
+        
+        /// <summary>
+        /// How many bubbles are required to form a match.
+        /// </summary>
+        private const int MinRequiredBubblesForMatch = 3;
+        
         /// <inheritdoc />
         public override string Name => "ResolveMatches";
 
@@ -27,17 +40,24 @@ namespace Cyl.BubbleShooter.Fsm
             var bubbleLaunched = BubbleShooterGame.Launcher.LastBubbleLaunched;
             var numConnectedBubbles = BubbleGrid.FindConnectedBubblesNonAlloc(
                 bubbleLaunched.GridPosition, IsSameColorAsLaunchedBubble, _connectedBubbles);
-            if (numConnectedBubbles > 1)
+            if (numConnectedBubbles < MinRequiredBubblesForMatch)
             {
-                for (var i = 0; i < numConnectedBubbles; i++)
-                {
-                    var bubble = _connectedBubbles[i];
-                    BubbleGrid.RemoveElement(bubble.GridPosition);
-                    BubbleFactory.ReturnBubble(bubble);
-                }
+                Finish();
+                return;
             }
             
-            Finish();
+            // Find the bubbles that are connected to the last launched bubble
+            for (var i = 0; i < numConnectedBubbles; i++)
+            {
+                var bubble = _connectedBubbles[i];
+                if (bubble && bubble.TryGetBubbleComponent<HealthComponent>(out var healthComponent))
+                {
+                    healthComponent.ApplyDamage(DamageAppliedOnMatch);
+                }
+            }
+
+            // Remove the connected bubbles from the grid over time, starting from the launched bubble.
+            RemoveBubblesAsync(bubbleLaunched, _connectedBubbles, numConnectedBubbles).FireAndForget();
         }
 
         /// <summary>
@@ -48,6 +68,54 @@ namespace Cyl.BubbleShooter.Fsm
             base.OnExit();
             
             Array.Clear(_connectedBubbles, 0, _connectedBubbles.Length);
+        }
+
+        private async Awaitable RemoveBubblesAsync(Bubble bubbleLaunched, Bubble[] connectedBubbles, int numConnectedBubbles)
+        {
+            var delayPerDistance = BubbleShooterGame.View.MatchResolutionTiming.delayPerRing;
+            var delayDecayFactor = BubbleShooterGame.View.MatchResolutionTiming.decayFactor;
+            var minDelay = BubbleShooterGame.View.MatchResolutionTiming.minDelay;
+            
+            // Sort the bubbles by distance from the launched bubble
+            var bubblesByDistance = new Dictionary<int, List<Bubble>>();
+            for (var i = 0; i < numConnectedBubbles; i++)
+            {
+                var bubble = connectedBubbles[i];
+                if (bubble == null)
+                    continue;
+                if (bubble.TryGetBubbleComponent<HealthComponent>(out var healthComponent) && healthComponent.Value > 0)
+                    continue;
+                
+                var distanceFromLaunchedBubble = bubbleLaunched.GridPosition.GetDistance(bubble.GridPosition);
+                if (!bubblesByDistance.ContainsKey(distanceFromLaunchedBubble))
+                    bubblesByDistance[distanceFromLaunchedBubble] = new List<Bubble>();
+                bubblesByDistance[distanceFromLaunchedBubble].Add(bubble);
+            }
+
+            // Remove bubbles in order of distance
+            var currentDelay = delayPerDistance;
+            foreach (var (distance, bubbles) in bubblesByDistance)
+            {
+                var totalDelay = distance * currentDelay;
+                await Awaitable.WaitForSecondsAsync(totalDelay);
+                foreach (var bubble in bubbles)
+                {
+                    if (bubble == null)
+                        continue;
+                    
+                    // TODO: Spawn VFX for bubble removal.
+                
+                    BubbleGrid.RemoveElement(bubble.GridPosition);
+                    BubbleFactory.ReturnBubble(bubble);
+                }
+                
+                currentDelay = Mathf.Max(minDelay, currentDelay * delayDecayFactor);
+            }
+
+            await Awaitable.MainThreadAsync();
+            await Awaitable.EndOfFrameAsync();
+
+            Finish();
         }
         
         private bool IsSameColorAsLaunchedBubble(Bubble bubble)

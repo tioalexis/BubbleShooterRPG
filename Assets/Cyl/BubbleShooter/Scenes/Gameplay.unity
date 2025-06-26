@@ -1507,6 +1507,10 @@ MonoBehaviour:
   rightWall: {fileID: 1969115413}
   topEdgeAnchor: {fileID: 1869264619}
   bottomEdgeAnchor: {fileID: 2022918234}
+  matchResolutionTiming:
+    delayPerRing: 0.1
+    decayFactor: 0.5
+    minDelay: 0.02
 --- !u!114 &1578779679
 MonoBehaviour:
   m_ObjectHideFlags: 0
