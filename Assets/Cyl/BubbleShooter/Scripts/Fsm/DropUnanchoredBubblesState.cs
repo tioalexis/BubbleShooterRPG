@@ -55,6 +55,7 @@ namespace Cyl.BubbleShooter.Fsm
             await Awaitable.MainThreadAsync();
             
             _bubblesBeingDropped++;
+            BubbleGrid.RemoveElement(bubble.GridPosition);
             
             var bounceDistanceX = Random.Range(0.5f, 1f);
             var bounceDistanceY = Random.Range(0.5f, 1f);
@@ -75,11 +76,13 @@ namespace Cyl.BubbleShooter.Fsm
                 await Awaitable.NextFrameAsync();
             }
             
-            BubbleShooterGame.Factory.ReturnBubble(bubble);
+            BubbleFactory.ReturnBubble(bubble);
             
             _bubblesBeingDropped--;
             if (_bubblesBeingDropped <= 0)
             {
+                await Awaitable.MainThreadAsync();
+                await Awaitable.EndOfFrameAsync();
                 Finish();
             }
         }
