@@ -1,12 +1,21 @@
 namespace Cyl.BubbleShooter.Fsm
 {
+    /// <summary>
+    /// Prepares the bubble grid by populating it with bubbles from the top down.
+    /// </summary>
     public class InitializeBubbleGridState : BubbleShooterFsmState
     {
+        /// <inheritdoc />
         public override string Name => "InitializeBubbleGrid";
         
+        /// <summary>
+        /// Populates the bubble grid with bubbles from the top down and moves the grid off-screen to start.
+        /// </summary>
         public override void OnEnter()
         {
             base.OnEnter();
+            
+            // TODO: Load the bubble grid from a configuration file or scriptable object.
             
             // Populate from the top down, so the first rows are occupied.
             const int initialOccupiedRows = 6;
@@ -20,13 +29,7 @@ namespace Cyl.BubbleShooter.Fsm
             }
             
             // Move the grid off-screen to start so it can be animated into view later.
-            var verticalOffset = 10f;
-            var topMostRow = BubbleGrid.Height - 1;
-            var gridTransform = BubbleGrid.RootTransform;
-            var offset = -BubbleGrid.GetWorldPosition(0, topMostRow).y - verticalOffset;
-            var targetPosition = gridTransform.position;
-            targetPosition.y = offset;
-            gridTransform.position = targetPosition;
+            
             
             Finish();
         }

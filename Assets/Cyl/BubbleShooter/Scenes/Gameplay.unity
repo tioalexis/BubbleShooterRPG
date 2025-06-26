@@ -714,10 +714,14 @@ MonoBehaviour:
   playerInput: {fileID: 1578779677}
   bubbleFactory: {fileID: 318915044}
   bubbleGrid: {fileID: 453118086}
+  touchCollider: {fileID: 2028497307}
   spawnPoints:
   - {fileID: 2047120532}
   - {fileID: 1173348363}
-  touchCollider: {fileID: 2028497307}
+  defaultColorPool:
+  - ColorA
+  - ColorB
+  - ColorC
 --- !u!1 &1079183895
 GameObject:
   m_ObjectHideFlags: 0

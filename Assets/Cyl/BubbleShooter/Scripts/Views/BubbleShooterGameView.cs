@@ -2,6 +2,9 @@ using UnityEngine;
 
 namespace Cyl.BubbleShooter.Views
 {
+    /// <summary>
+    /// Holds references to the game view components in the Bubble Shooter game.
+    /// </summary>
     public class BubbleShooterGameView : MonoBehaviour
     {
         [Header("Walls")]

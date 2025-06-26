@@ -6,16 +6,25 @@ namespace Cyl.BubbleShooter.Bubbles
     public abstract class BubbleComponent : MonoBehaviour
     {
         public Bubble Owner { get; private set; }
-        
+
         private void Awake()
         {
             Owner = GetComponent<Bubble>();
         }
 
-        public abstract void Initialize();
-        
-        public abstract void OnSpawn();
-        
-        public abstract void OnDespawn();
+        public virtual void Initialize()
+        {
+
+        }
+
+        public virtual void OnSpawn()
+        {
+
+        }
+
+        public virtual void OnDespawn()
+        {
+            
+        }
     }
 }

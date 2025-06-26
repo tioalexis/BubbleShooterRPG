@@ -7,6 +7,40 @@ using UnityEngine;
 
 namespace Cyl.BubbleShooter.Grid
 {
+    /// <summary>
+    /// Represents a cluster of bubbles in the game.
+    /// A cluster is a collection of bubbles that are connected together.
+    /// </summary>
+    public class BubbleCluster
+    {
+        /// <summary>
+        /// The bubbles that belong to this cluster.
+        /// </summary>
+        public HashSet<Bubble> Bubbles { get; }
+        
+        /// <summary>
+        /// Whether this cluster is anchored to the grid or not.
+        /// If one bubble in the cluster is anchored, the entire cluster is considered anchored.
+        /// An anchored cluster will not fall when unanchored bubbles are dropped.
+        /// This value is false by default and is used by <see cref="Cyl.BubbleShooter.Grid.BubbleGrid.FindClusters"/>
+        /// to determine if the cluster is anchored or not.
+        /// </summary>
+        public bool IsAnchored { get; set; }
+        
+        /// <summary>
+        /// Creates a new instance of <see cref="BubbleCluster"/> with the specified bubbles.
+        /// </summary>
+        /// <param name="bubbles">The bubbles that belong to this cluster.</param>
+        public BubbleCluster(HashSet<Bubble> bubbles)
+        {
+            Bubbles = bubbles;
+            IsAnchored = false; // Default to not anchored
+        }
+    }
+    
+    /// <summary>
+    /// Represents a grid of bubbles in the Bubble Shooter game.
+    /// </summary>
     public class BubbleGrid : HexGrid<Bubble>
     {
         [SerializeField] private int width = 11;
@@ -149,6 +183,14 @@ namespace Cyl.BubbleShooter.Grid
             return count;
         }
 
+        /// <summary>
+        /// Finds all clusters of bubbles in the grid.
+        /// A cluster is defined as a group of connected bubbles that are adjacent to each other.
+        /// This method uses breadth-first search to find all connected bubbles and groups them into clusters.
+        /// It will also determine if each cluster is anchored, meaning at least one bubble in the cluster is
+        /// anchored to the ceiling.
+        /// </summary>
+        /// <returns>A list of <see cref="BubbleCluster"/> objects representing the clusters found in the grid.</returns>
         public List<BubbleCluster> FindClusters()
         {
             var result = new List<BubbleCluster>();

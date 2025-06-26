@@ -1,17 +1,25 @@
 using System;
 using Cyl.BubbleShooter.BubbleComponents;
 using Cyl.BubbleShooter.Bubbles;
-using UnityEngine;
-using Object = UnityEngine.Object;
 
 namespace Cyl.BubbleShooter.Fsm
 {
+    /// <summary>
+    /// Handles the resolution of matches in the Bubble Shooter game.
+    /// Finds connected bubbles of the same color as the last launched bubble,
+    /// and removes them from the grid.
+    /// </summary>
     public class ResolveMatchesState : BubbleShooterFsmState
     {
+        /// <inheritdoc />
         public override string Name => "ResolveMatches";
 
         private readonly Bubble[] _connectedBubbles = new Bubble[320];
         
+        /// <summary>
+        /// Finds all bubbles connected to the last launched bubble that have the same color,
+        /// and removes them from the grid.
+        /// </summary>
         public override void OnEnter()
         {
             base.OnEnter();
@@ -32,6 +40,9 @@ namespace Cyl.BubbleShooter.Fsm
             Finish();
         }
 
+        /// <summary>
+        /// Cleans up any resources used by this state.
+        /// </summary>
         public override void OnExit()
         {
             base.OnExit();

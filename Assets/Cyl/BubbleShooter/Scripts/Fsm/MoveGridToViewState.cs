@@ -3,15 +3,24 @@ using UnityEngine;
 
 namespace Cyl.BubbleShooter.Fsm
 {
+    /// <summary>
+    /// Moves the bubble grid to the view, anchoring it to either the top or bottom edge of the view
+    /// depending on the remaining rows in the grid.
+    /// </summary>
     public class MoveGridToViewState : BubbleShooterFsmState
     {
+        /// <inheritdoc />
         public override string Name => "MoveGridToView";
 
+        /// <summary>
+        /// Move the bubble grid to the view, anchoring it to either the top or bottom edge of the view
+        /// </summary>
         public override void OnEnter()
         {
             base.OnEnter();
 
-            MoveGridToViewAsync(0.50f)
+            const float moveDuration = 0.5f;
+            MoveGridToViewAsync(moveDuration)
                 .FireAndForget();
         }
         

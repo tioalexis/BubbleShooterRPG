@@ -1,9 +1,16 @@
 namespace Cyl.BubbleShooter.Fsm
 {
+    /// <summary>
+    /// Initializes the gameplay scene.
+    /// </summary>
     public class InitializeGameplaySceneState : BubbleShooterFsmState
     {
+        /// <inheritdoc />
         public override string Name => "InitializeGameplayScene";
         
+        /// <summary>
+        /// Initializes the gameplay scene.
+        /// </summary>
         public override void OnEnter()
         {
             base.OnEnter();

@@ -353,9 +353,9 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   colorGameObjectMappings:
-  - color: 1
+  - colorName: ColorA
     gameObject: {fileID: 2405399190865143313}
-  - color: 2
+  - colorName: ColorB
     gameObject: {fileID: 7056800419599887967}
-  - color: 3
+  - colorName: ColorC
     gameObject: {fileID: 924850092415723724}

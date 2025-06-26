@@ -3,6 +3,10 @@ using UnityEngine;
 
 namespace Cyl.BubbleShooter.Grid
 {
+    /// <summary>
+    /// This class is responsible for creating a visual representation of the bubble grid slots.
+    /// Used for debugging and visualizing the grid layout in the Unity editor.
+    /// </summary>
     public class BubbleGridSlotView : MonoBehaviour
     {
         [SerializeField] private BubbleGrid grid;

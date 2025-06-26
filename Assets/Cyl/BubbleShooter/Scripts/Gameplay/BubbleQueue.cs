@@ -14,21 +14,15 @@ namespace Cyl.BubbleShooter.Gameplay
     /// </summary>
     public class BubbleQueue : MonoBehaviour
     {
-        private static readonly BubbleColor[] DefaultColorPool = 
-        {
-            BubbleColor.ColorA,
-            BubbleColor.ColorB,
-            BubbleColor.ColorC
-        };
-        
         [SerializeField] private PlayerInput playerInput;
         [SerializeField] private BubbleFactory bubbleFactory;
         [SerializeField] private BubbleGrid bubbleGrid;
-        [SerializeField] private Transform[] spawnPoints;
         [SerializeField] private Collider2D touchCollider;
+        [SerializeField] private Transform[] spawnPoints;
+        [SerializeField] private string[] defaultColorPool;
         
         private readonly Random _random = new();
-        private readonly List<BubbleColor> _bubbleColorHistory = new();
+        private readonly List<string> _bubbleColorHistory = new();
         private Bubble[] _queue;
         
         public Bubble ActiveBubble => _queue[0];
@@ -142,13 +136,13 @@ namespace Cyl.BubbleShooter.Gameplay
             Debug.LogWarning("Bubble not found in queue: " + bubble.name);
         }
 
-        private BubbleColor EvaluateNextBubbleColor()
+        private string EvaluateNextBubbleColor()
         {
-            var colorPool = new List<BubbleColor>(DefaultColorPool);
+            var colorPool = new List<string>(defaultColorPool);
             
             // Make sure the next bubble color is not the same as the last three colors
-            if (_bubbleColorHistory.Count > DefaultColorPool.Length)
-                for (var i = 0; i < _bubbleColorHistory.Count - DefaultColorPool.Length; i++)
+            if (_bubbleColorHistory.Count > defaultColorPool.Length)
+                for (var i = 0; i < _bubbleColorHistory.Count - defaultColorPool.Length; i++)
                     colorPool.Remove(_bubbleColorHistory[i]);
             
             // Make sure that only colors from the grid are available
@@ -162,16 +156,16 @@ namespace Cyl.BubbleShooter.Gameplay
             
             // If we still have no colors, fallback to the default color pool
             if (colorPool.Count == 0)
-                colorPool.AddRange(DefaultColorPool);
+                colorPool.AddRange(defaultColorPool);
             
             // Randomly select a color from the pool
             var randomIndex = _random.Next(colorPool.Count);
             return colorPool[randomIndex];
         }
 
-        private HashSet<BubbleColor> EvaluateColorsInGrid()
+        private HashSet<string> EvaluateColorsInGrid()
         {
-            var result = new HashSet<BubbleColor>();
+            var result = new HashSet<string>();
 
             for (var row = 0; row < bubbleGrid.Height; row++)
             for (var col = 0; col < bubbleGrid.Width; col++)
@@ -183,14 +177,14 @@ namespace Cyl.BubbleShooter.Gameplay
                 if (bubble.TryGetBubbleComponent<ColorComponent>(out var colorComponent))
                     result.Add(colorComponent.Color);
                 
-                if (result.Count >= DefaultColorPool.Length)
+                if (result.Count >= defaultColorPool.Length)
                     return result; // Early exit if we have enough colors
             }
             
             return result;
         }
         
-        private void RecordBubbleColor(BubbleColor bubbleColor)
+        private void RecordBubbleColor(string bubbleColor)
         {
             const int maxHistorySize = 8;
             
