@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Cyl.BubbleShooter.BubbleComponents;
 using Cyl.BubbleShooter.Bubbles;
 using Cyl.BubbleShooter.Gameplay;
 using Cyl.Hexagons;
@@ -259,8 +260,8 @@ namespace Cyl.BubbleShooter.Grid
                 return false;
             if (bubble.GridPosition.Row == height - 1)
                 return true;
-            // if (bubble.TryGetComponent<AnchorComponent>(out var anchorComponent))
-            //     return anchorComponent.IsAnchored;
+            if (bubble.TryGetComponent<AnchorComponent>(out _))
+                return true;
             return false;
         }
     }
