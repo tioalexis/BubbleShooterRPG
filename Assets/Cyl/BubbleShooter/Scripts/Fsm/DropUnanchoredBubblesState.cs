@@ -1,7 +1,3 @@
-using Cyl.BubbleShooter.Bubbles;
-using Cyl.Common.Utils;
-using UnityEngine;
-
 namespace Cyl.BubbleShooter.Fsm
 {
     /// <summary>
