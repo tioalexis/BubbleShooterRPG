@@ -44,6 +44,7 @@ namespace Cyl.BubbleShooter.Fsm
         /// </summary>
         public override void OnEnter()
         {
+            Debug.Log($"Entered state: {Name}");
             // Intentionally left empty
         }
 

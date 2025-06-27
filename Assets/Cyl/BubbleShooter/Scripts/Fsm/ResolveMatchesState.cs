@@ -14,16 +14,6 @@ namespace Cyl.BubbleShooter.Fsm
     /// </summary>
     public class ResolveMatchesState : BubbleShooterFsmState
     {
-        /// <summary>
-        /// How much damage is applied to each bubble when resolving matches.
-        /// </summary>
-        private const int DamageAppliedOnMatch = 1;
-        
-        /// <summary>
-        /// How many bubbles are required to form a match.
-        /// </summary>
-        private const int MinRequiredBubblesForMatch = 3;
-        
         /// <inheritdoc />
         public override string Name => "ResolveMatches";
 
@@ -37,22 +27,30 @@ namespace Cyl.BubbleShooter.Fsm
         {
             base.OnEnter();
             
-            var bubbleLaunched = BubbleShooterGame.Launcher.LastBubbleLaunched;
+            var bubbleLaunched = BubbleLauncher.LastBubbleLaunched;
+            if (bubbleLaunched == null)
+            {
+                Finish();
+                return;
+            }
+            
+            var minRequiredBubblesForMatch = View.MatchResolutionSettings.minRequiredBubblesForMatch;
             var numConnectedBubbles = BubbleGrid.FindConnectedBubblesNonAlloc(
                 bubbleLaunched.GridPosition, IsSameColorAsLaunchedBubble, _connectedBubbles);
-            if (numConnectedBubbles < MinRequiredBubblesForMatch)
+            if (numConnectedBubbles < minRequiredBubblesForMatch)
             {
                 Finish();
                 return;
             }
             
             // Find the bubbles that are connected to the last launched bubble
+            var damageAppliedToMatchedBubbles = View.MatchResolutionSettings.damageAppliedToMatchedBubbles;
             for (var i = 0; i < numConnectedBubbles; i++)
             {
                 var bubble = _connectedBubbles[i];
                 if (bubble && bubble.TryGetBubbleComponent<HealthComponent>(out var healthComponent))
                 {
-                    healthComponent.ApplyDamage(DamageAppliedOnMatch);
+                    healthComponent.ApplyDamage(damageAppliedToMatchedBubbles);
                 }
             }
 
@@ -72,9 +70,9 @@ namespace Cyl.BubbleShooter.Fsm
 
         private async Awaitable RemoveBubblesAsync(Bubble bubbleLaunched, Bubble[] connectedBubbles, int numConnectedBubbles)
         {
-            var delayPerDistance = BubbleShooterGame.View.MatchResolutionTiming.delayPerRing;
-            var delayDecayFactor = BubbleShooterGame.View.MatchResolutionTiming.decayFactor;
-            var minDelay = BubbleShooterGame.View.MatchResolutionTiming.minDelay;
+            var delayPerDistance = View.MatchResolutionSettings.delayPerRing;
+            var delayDecayFactor = View.MatchResolutionSettings.decayFactor;
+            var minDelay = View.MatchResolutionSettings.minDelay;
             
             // Sort the bubbles by distance from the launched bubble
             var bubblesByDistance = new Dictionary<int, List<Bubble>>();
@@ -120,7 +118,7 @@ namespace Cyl.BubbleShooter.Fsm
         
         private bool IsSameColorAsLaunchedBubble(Bubble bubble)
         {
-            var bubbleLaunched = BubbleShooterGame.Launcher.LastBubbleLaunched;
+            var bubbleLaunched = BubbleLauncher.LastBubbleLaunched;
             if (bubbleLaunched == null)
                 return false;
             

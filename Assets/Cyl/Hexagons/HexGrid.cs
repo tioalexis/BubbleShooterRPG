@@ -37,6 +37,11 @@ namespace Cyl.Hexagons
         public virtual HexLayout Layout { get; } = new HexLayout();
 
         /// <summary>
+        /// The transform that holds the grid.
+        /// </summary>
+        public virtual Transform RootTransform => transform;
+
+        /// <summary>
         /// The radius of the outer circle of a hexagonal cell in the grid.
         /// Also referred to as the size of a hexagonal cell.
         /// A scale of 1 results in a cell size of ~0.57735.
@@ -210,7 +215,7 @@ namespace Cyl.Hexagons
         /// <returns>The world position of the hexagonal cell at the specified column and row.</returns>
         public Vector3 GetWorldPosition(int col, int row)
         {
-            return Layout.OffsetHexToWorld(new Hex(col, row), transform.position, CellSize);
+            return Layout.OffsetHexToWorld(new Hex(col, row), RootTransform.position, CellSize);
         }
         
         /// <summary>
@@ -220,7 +225,7 @@ namespace Cyl.Hexagons
         /// <returns>The grid position in hexagonal coordinates corresponding to the world position.</returns>
         public Hex GetGridPosition(Vector3 worldPosition)
         {
-            return Layout.WorldToAxialHex(worldPosition, transform.position, CellSize);
+            return Layout.WorldToAxialHex(worldPosition, RootTransform.position, CellSize);
         }
         
         /// <summary>
@@ -312,9 +317,10 @@ namespace Cyl.Hexagons
 
         /// <summary>
         /// Finds the first occupied row in the grid.
+        /// This would be the bottom-most row that contains at least one occupied cell.
         /// </summary>
         /// <returns>The index of the first occupied row, or -1 if no rows are occupied.</returns>
-        public int FindFirstOccupiedRow()
+        public int FindBottomMostOccupiedRow()
         {
             for (var row = 0; row < Height; row++)
             {
@@ -337,11 +343,12 @@ namespace Cyl.Hexagons
         
         /// <summary>
         /// Finds the last occupied row in the grid.
+        /// This would be the top-most row that contains at least one occupied cell.
         /// </summary>
         /// <returns>The index of the last occupied row, or -1 if no rows are occupied.</returns>
-        public int FindLastOccupiedRow()
+        public int FindTopMostOccupiedRow()
         {
-            for (var row = 0; row < Height; row++)
+            for (var row = Height - 1; row >= 0; row--)
             {
                 var occupied = false;
                 for (var col = 0; col < Width; col++)
@@ -352,11 +359,11 @@ namespace Cyl.Hexagons
                     occupied = true;
                     break;
                 }
-
-                if (!occupied)
-                    return row - 1;
+                
+                if (occupied)
+                    return row;
             }
-
+            
             return -1;
         }
         
@@ -426,7 +433,7 @@ namespace Cyl.Hexagons
             if (Application.isPlaying)
             {
                 // Draw line indicating the first occupied row
-                var firstOccupiedRow = FindFirstOccupiedRow();
+                var firstOccupiedRow = FindBottomMostOccupiedRow();
                 if (firstOccupiedRow >= 0)
                 {
                     var firstOccupiedPositionA = GetWorldPosition(0, firstOccupiedRow);
@@ -436,7 +443,7 @@ namespace Cyl.Hexagons
                 }
             
                 // Draw line indicating the last occupied row
-                var lastOccupiedRow = FindLastOccupiedRow();
+                var lastOccupiedRow = FindTopMostOccupiedRow();
                 if (lastOccupiedRow >= 0)
                 {
                     var lastOccupiedPositionA = GetWorldPosition(0, lastOccupiedRow);

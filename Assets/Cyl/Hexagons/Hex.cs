@@ -11,7 +11,7 @@ namespace Cyl.Hexagons
     /// Please refer to https://www.redblobgames.com/grids/hexagons
     /// for a detailed explanation of the hexagonal coordinate system.
     /// </summary>
-    public struct Hex
+    public struct Hex : IEquatable<Hex>
     {
         /// <summary>
         /// Pre-calculated constant for the square root of 3. For performance reasons.
@@ -275,9 +275,42 @@ namespace Cyl.Hexagons
             return (this - other).GetLength();
         }
         
+        /// <summary>
+        /// Converts the Hex to a human-readable string representation.
+        /// </summary>
+        /// <returns>A string representation of the Hex in the format "{Col, Row} (q, r, s)".</returns>
         public override string ToString()
         {
             return $"{{{Col}, {Row}}} ({_q}, {_r}, {_s})";
+        }
+
+        /// <summary>
+        /// Checks if this Hex is equal to another Hex.
+        /// </summary>
+        /// <param name="other">The other Hex to compare with.</param>
+        /// <returns>True if the q, r, and s coordinates are equal; otherwise, false.</returns>
+        public bool Equals(Hex other)
+        {
+            return _q == other._q && _r == other._r && _s == other._s;
+        }
+
+        /// <summary>
+        /// Checks if this Hex is equal to another object.
+        /// </summary>
+        /// <param name="obj">The object to compare with.</param>
+        /// <returns>True if the object is a Hex and has the same q, r, and s coordinates; otherwise, false.</returns>
+        public override bool Equals(object obj)
+        {
+            return obj is Hex other && Equals(other);
+        }
+
+        /// <summary>
+        /// Retrieves the hash code for this Hex.
+        /// </summary>
+        /// <returns>The hash code for this Hex, which is a combination of the q, r, and s coordinates.</returns>
+        public override int GetHashCode()
+        {
+            return HashCode.Combine(_q, _r, _s);
         }
     }
 

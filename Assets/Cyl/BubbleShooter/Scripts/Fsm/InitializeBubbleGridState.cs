@@ -28,9 +28,6 @@ namespace Cyl.BubbleShooter.Fsm
                 }
             }
             
-            // Move the grid off-screen to start so it can be animated into view later.
-            
-            
             Finish();
         }
     }

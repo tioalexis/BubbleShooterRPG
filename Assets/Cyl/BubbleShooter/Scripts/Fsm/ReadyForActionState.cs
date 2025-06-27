@@ -1,4 +1,5 @@
 using Cyl.BubbleShooter.Bubbles;
+using Cyl.Common.Utils;
 using Cyl.Hexagons;
 
 namespace Cyl.BubbleShooter.Fsm
@@ -19,9 +20,14 @@ namespace Cyl.BubbleShooter.Fsm
         {
             base.OnEnter();
             
-            BubbleShooterGame.Launcher.OnBubbleLanded += OnBubbleLanded;
-            
-            BubbleShooterGame.Queue.PrepareQueue();
+            BubbleLauncher.OnCycleQueueRequested += OnCycleQueueRequested;
+            BubbleLauncher.OnBubbleLanded += OnBubbleLanded;
+
+            if (!BubbleQueue.IsQueueReady())
+            {
+                BubbleLauncher.AllowInput = false;
+                BubbleQueue.PrepareQueueAsync(OnQueueReady).FireAndForget();
+            }
         }
 
         /// <summary>
@@ -31,11 +37,23 @@ namespace Cyl.BubbleShooter.Fsm
         {
             base.OnExit();
             
-            BubbleShooterGame.Launcher.OnBubbleLanded -= OnBubbleLanded;
+            BubbleLauncher.OnCycleQueueRequested -= OnCycleQueueRequested;
+            BubbleLauncher.OnBubbleLanded -= OnBubbleLanded;
+        }
+        
+        private void OnQueueReady()
+        {
+            BubbleLauncher.AllowInput = true;
+        }
+        
+        private void OnCycleQueueRequested()
+        {
+            StateMachine.FireTransitionEvent(CycleBubbleQueueState.TransitionEvent);
         }
 
         private void OnBubbleLanded(Bubble bubbleLaunched, Hex landingGridPosition)
         {
+            BubbleLauncher.AllowInput = false;
             Finish();
         }
     }

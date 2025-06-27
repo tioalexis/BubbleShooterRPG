@@ -1,5 +1,3 @@
-using System;
-using Cyl.BubbleShooter.BubbleComponents;
 using Cyl.BubbleShooter.Bubbles;
 using Cyl.BubbleShooter.Fsm;
 using Cyl.BubbleShooter.Grid;
@@ -10,6 +8,7 @@ using UnityEngine.InputSystem;
 
 namespace Cyl.BubbleShooter.Gameplay
 {
+    [RequireComponent(typeof(StateMachine))]
     public class BubbleShooterGame : MonoBehaviour
     {
         [SerializeField] private Camera gameCamera;
@@ -19,7 +18,8 @@ namespace Cyl.BubbleShooter.Gameplay
         [SerializeField] private BubbleQueue bubbleQueue;
         [SerializeField] private BubbleFactory bubbleFactory;
         [SerializeField] private BubbleShooterGameView gameView;
-        [SerializeField] private StateMachine stateMachine;
+        
+        private StateMachine _stateMachine;
         
         public Camera Camera => gameCamera;
         
@@ -37,31 +37,41 @@ namespace Cyl.BubbleShooter.Gameplay
         {
             var initializeGameplaySceneState = new InitializeGameplaySceneState();
             var initializeBubbleGridState = new InitializeBubbleGridState();
-            var moveGridToViewState = new MoveGridToViewState();
+            var introGridToViewState = new IntroGridToViewState();
             var readyForActionState = new ReadyForActionState();
+            var cycleBubbleQueueState = new CycleBubbleQueueState();
             var resolveMatchesState = new ResolveMatchesState();
             var dropUnanchoredBubblesState = new DropUnanchoredBubblesState();
+            var moveGridToViewState = new MoveGridToViewState();
             
-            stateMachine.RegisterState(initializeGameplaySceneState);
-            stateMachine.RegisterState(initializeBubbleGridState);
-            stateMachine.RegisterState(moveGridToViewState);
-            stateMachine.RegisterState(readyForActionState);
-            stateMachine.RegisterState(resolveMatchesState);
-            stateMachine.RegisterState(dropUnanchoredBubblesState);
+            if (!TryGetComponent(out _stateMachine))
+                _stateMachine = gameObject.AddComponent<StateMachine>();
             
-            stateMachine.RegisterTransition(initializeGameplaySceneState, initializeBubbleGridState);
-            stateMachine.RegisterTransition(initializeBubbleGridState, moveGridToViewState);
-            stateMachine.RegisterTransition(moveGridToViewState, readyForActionState);
-            stateMachine.RegisterTransition(readyForActionState, resolveMatchesState);
-            stateMachine.RegisterTransition(resolveMatchesState, dropUnanchoredBubblesState);
-            stateMachine.RegisterTransition(dropUnanchoredBubblesState, readyForActionState);
+            _stateMachine.RegisterState(initializeGameplaySceneState);
+            _stateMachine.RegisterState(initializeBubbleGridState);
+            _stateMachine.RegisterState(introGridToViewState);
+            _stateMachine.RegisterState(readyForActionState);
+            _stateMachine.RegisterState(cycleBubbleQueueState);
+            _stateMachine.RegisterState(resolveMatchesState);
+            _stateMachine.RegisterState(dropUnanchoredBubblesState);
+            _stateMachine.RegisterState(moveGridToViewState);
             
-            stateMachine.InitialStateName = initializeGameplaySceneState.Name;
+            _stateMachine.RegisterTransition(initializeGameplaySceneState, initializeBubbleGridState);
+            _stateMachine.RegisterTransition(initializeBubbleGridState, introGridToViewState);
+            _stateMachine.RegisterTransition(introGridToViewState, readyForActionState);
+            _stateMachine.RegisterTransition(readyForActionState, resolveMatchesState);
+            _stateMachine.RegisterTransition(readyForActionState, cycleBubbleQueueState, CycleBubbleQueueState.TransitionEvent);
+            _stateMachine.RegisterTransition(cycleBubbleQueueState, readyForActionState);
+            _stateMachine.RegisterTransition(resolveMatchesState, dropUnanchoredBubblesState);
+            _stateMachine.RegisterTransition(dropUnanchoredBubblesState, moveGridToViewState);
+            _stateMachine.RegisterTransition(moveGridToViewState, readyForActionState);
+            
+            _stateMachine.InitialStateName = initializeGameplaySceneState.Name;
         }
 
         private void Start()
         {
-            stateMachine.Begin();
+            _stateMachine.Begin();
         }
     }
 }

@@ -7,7 +7,11 @@ namespace Cyl.BubbleShooter.Fsm
     /// </summary>
     public class IntroGridToViewState : MoveGridToViewState
     {
+        /// <inheritdoc />
         public override string Name => "IntroGridToView";
+
+        /// <inheritdoc />
+        public override float Duration => 1.0f;
 
         /// <summary>
         /// Moves the bubble grid off-screen to prepare for the intro animation and then moves it into view.

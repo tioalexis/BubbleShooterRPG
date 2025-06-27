@@ -1,3 +1,5 @@
+using UnityEngine;
+
 namespace Cyl.BubbleShooter.Fsm
 {
     /// <summary>
@@ -15,18 +17,27 @@ namespace Cyl.BubbleShooter.Fsm
         {
             base.OnEnter();
             
-            // AlignCameraToGrid();
+            AlignCameraToGrid();
             // AlignWallsToGrid();
             Finish();
         }
 
-        // private void AlignCameraToGrid()
-        // {
-        //     var gridSize = BubbleGrid.CalculateGridSize();
-        //     var cameraPosition = Camera.transform.position;
-        //     cameraPosition.x = (gridSize.x / 2f) - 0.5f; // TODO: remove magic number
-        //     BubbleShooterGame.Camera.transform.position = cameraPosition;
-        // }
+        private void AlignCameraToGrid()
+        {
+            var maxOrthographicSize = View.CameraSettings.maxOrthographicSize;
+            var positionOffset = View.CameraSettings.positionOffset;
+            
+            // Align camera position to the center of the grid
+            var gridSize = BubbleGrid.CalculateGridSize();
+            var cameraPosition = Camera.transform.position;
+            cameraPosition.x = gridSize.x / 2f;
+            BubbleShooterGame.Camera.transform.position = cameraPosition + (Vector3)positionOffset;
+            
+            // Resize the camera orthographic size to fit the width of the grid
+            var cameraAspect = Camera.aspect;
+            var cameraOrthographicSize = gridSize.x / (2f * cameraAspect);
+            Camera.orthographicSize = Mathf.Max(cameraOrthographicSize, maxOrthographicSize);
+        }
         
         // private void AlignWallsToGrid()
         // {

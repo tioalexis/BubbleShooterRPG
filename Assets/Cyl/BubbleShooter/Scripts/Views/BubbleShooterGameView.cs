@@ -4,8 +4,27 @@ using UnityEngine;
 namespace Cyl.BubbleShooter.Views
 {
     [Serializable]
-    public struct MatchResolutionTiming
+    public struct CameraSettings
     {
+        [Tooltip("Pre-calculated maximum aspect ratio for the camera.")]
+        public float maxOrthographicSize;
+        
+        [Tooltip("Added to the camera's position to ensure it is at the center of the grid.")]
+        public Vector2 positionOffset;
+        
+        [Tooltip("Minimum number of rows that should be visible in the game view.")]
+        public int minVisibleRows;
+    }
+    
+    [Serializable]
+    public struct MatchResolutionSettings
+    {
+        [Tooltip("How many bubbles are required to trigger a match?")]
+        public int minRequiredBubblesForMatch;
+
+        [Tooltip("How much damage is applied to the bubbles that are part of a match?")]
+        public int damageAppliedToMatchedBubbles;
+        
         [Tooltip("Delay per ring when resolving matches.")]
         public float delayPerRing;
 
@@ -38,8 +57,11 @@ namespace Cyl.BubbleShooter.Views
         [SerializeField] private Transform bottomEdgeAnchor;
         public Transform BottomEdgeAnchor => bottomEdgeAnchor;
 
-        [Header("Timing Settings")] 
-        [SerializeField] private MatchResolutionTiming matchResolutionTiming;
-        public MatchResolutionTiming MatchResolutionTiming => matchResolutionTiming;
+        [Header("Runtime Settings")] 
+        [SerializeField] private CameraSettings cameraSettings;
+        public CameraSettings CameraSettings => cameraSettings;
+        
+        [SerializeField] private MatchResolutionSettings matchResolutionSettings;
+        public MatchResolutionSettings MatchResolutionSettings => matchResolutionSettings;
     }
 }

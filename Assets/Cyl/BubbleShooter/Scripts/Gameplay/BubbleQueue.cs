@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using Cyl.BubbleShooter.BubbleComponents;
 using Cyl.BubbleShooter.Bubbles;
@@ -21,6 +22,10 @@ namespace Cyl.BubbleShooter.Gameplay
         [SerializeField] private Transform[] spawnPoints;
         [SerializeField] private string[] defaultColorPool;
         
+        [Header("Animation")]
+        [SerializeField] private float prepareQueueAnimationDuration = 0.1f;
+        [SerializeField] private float cycleQueueAnimationDuration = 0.1f;
+        
         private readonly Random _random = new();
         private readonly List<string> _bubbleColorHistory = new();
         private Bubble[] _queue;
@@ -36,7 +41,20 @@ namespace Cyl.BubbleShooter.Gameplay
             _queue = new Bubble[spawnPoints.Length];
         }
         
-        public void PrepareQueue()
+        /// <summary>
+        /// Checks if the queue is filled with bubbles.
+        /// </summary>
+        /// <returns>True if all bubbles in the queue are not null, false otherwise.</returns>
+        public bool IsQueueReady()
+        {
+            foreach (var bubble in _queue)
+                if (bubble == null)
+                    return false;
+
+            return true;
+        }
+        
+        public async Awaitable PrepareQueueAsync(Action onComplete = null)
         {
             // Move remaining bubbles to the beginning of the queue
             for (var i = 0; i < _queue.Length; i++)
@@ -66,43 +84,86 @@ namespace Cyl.BubbleShooter.Gameplay
                     continue;
                 
                 bubble.transform.SetParent(transform);
+                bubble.transform.position = spawnPoints[i].position;
                 bubble.SetColliderEnabled(false);
                 _queue[i] = bubble;
             }
             
             // Move the bubbles to their respective spawn points
+            // while scaling them to their final size
+            var duration = prepareQueueAnimationDuration;
+            var elapsedTime = 0f;
+            var targetScale = Vector3.one * bubbleGrid.CellUnitScale;
+            while (elapsedTime < duration)
+            {
+                var t = Mathf.Clamp01(elapsedTime / duration);
+                for (var i = 0; i < _queue.Length; i++)
+                {
+                    if (_queue[i] == null) 
+                        continue;
+                    
+                    var bubble = _queue[i];
+                    bubble.transform.position = Vector3.Lerp(bubble.transform.position, spawnPoints[i].position, t);
+                    bubble.transform.rotation = Quaternion.Lerp(bubble.transform.rotation, spawnPoints[i].rotation, t);
+                    bubble.transform.localScale = Vector3.Lerp(bubble.transform.localScale, targetScale, t);
+                }
+                elapsedTime += Time.deltaTime;
+                await Awaitable.EndOfFrameAsync();
+            }
+            
             for (var i = 0; i < _queue.Length; i++)
             {
                 if (_queue[i] == null) 
                     continue;
-                
-                _queue[i].transform.position = spawnPoints[i].position;
-                _queue[i].transform.rotation = spawnPoints[i].rotation;
+                    
+                var bubble = _queue[i];
+                bubble.transform.position = spawnPoints[i].position;
+                bubble.transform.rotation = spawnPoints[i].rotation;
+                bubble.transform.localScale = targetScale;
             }
+
+            await Awaitable.MainThreadAsync();
+            
+            onComplete?.Invoke();
         }
-        
-        public void CycleQueue()
+
+        public async Awaitable CycleQueueAsync(Action onComplete = null)
         {
             if (_queue.Length == 0)
+            {
+                await Awaitable.MainThreadAsync();
+                onComplete?.Invoke();
                 return;
-                
+            }
+            
             var firstBubble = _queue[0];
             for (var i = 0; i < _queue.Length - 1; i++)
             {
                 _queue[i] = _queue[i + 1];
-                if (_queue[i] != null)
-                {
-                    _queue[i].transform.position = spawnPoints[i].position;
-                    _queue[i].transform.rotation = spawnPoints[i].rotation;
-                }
             }
             _queue[^1] = firstBubble;
-                
-            if (_queue[^1] != null)
+            
+            // Move the bubbles in the world to their respective spawn points
+            var duration = cycleQueueAnimationDuration;
+            var elapsedTime = 0f;
+            while (elapsedTime < duration)
             {
-                _queue[^1].transform.position = spawnPoints[^1].position;
-                _queue[^1].transform.rotation = spawnPoints[^1].rotation;
+                var t = Mathf.Clamp01(elapsedTime / duration);
+                for (var i = 0; i < _queue.Length; i++)
+                {
+                    if (_queue[i] == null) 
+                        continue;
+                    
+                    var bubble = _queue[i];
+                    bubble.transform.position = Vector3.Lerp(bubble.transform.position, spawnPoints[i].position, t);
+                    bubble.transform.rotation = Quaternion.Lerp(bubble.transform.rotation, spawnPoints[i].rotation, t);
+                }
+                elapsedTime += Time.deltaTime;
+                await Awaitable.EndOfFrameAsync();
             }
+            
+            await Awaitable.MainThreadAsync();
+            onComplete?.Invoke();
         }
 
         public Bubble GenerateBubble()

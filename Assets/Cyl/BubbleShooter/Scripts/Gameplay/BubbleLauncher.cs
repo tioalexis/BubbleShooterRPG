@@ -59,6 +59,11 @@ namespace Cyl.BubbleShooter.Gameplay
         /// </summary>
         public event Action<Bubble, Hex> OnBubbleLanded;
         
+        /// <summary>
+        /// Invoked when the player cycles through the bubble queue.
+        /// </summary>
+        public event Action OnCycleQueueRequested;
+        
         [SerializeField] private Camera gameCamera;
         [SerializeField] private PlayerInput playerInput;
         [SerializeField] private BubbleGrid bubbleGrid;
@@ -76,6 +81,11 @@ namespace Cyl.BubbleShooter.Gameplay
 
         private readonly Vector2[] _aimTrajectory = new Vector2[MaxTrajectoryPoints];
         private CalculateTrajectoryResult? _currentTrajectory = null;
+        
+        /// <summary>
+        /// Whether the player can input actions.
+        /// </summary>
+        public bool AllowInput { get; set; } = true;
         
         /// <summary>
         /// Where the player is aiming in screen coordinates.
@@ -323,9 +333,12 @@ namespace Cyl.BubbleShooter.Gameplay
         
         private void OnAim(InputAction.CallbackContext context)
         {
+            // Always record the aim position, even if we the input is not allowed.
+            // This allows the player to hold the aim position while the input is disabled,
+            // and immediately start aiming when the input is re-enabled.
             AimPosition = context.ReadValue<Vector2>();
 
-            if (IsAiming)
+            if (IsAiming && AllowInput)
             {
                 _currentTrajectory = CalculateTrajectory();
                 HandleTrajectoryView();
@@ -334,7 +347,7 @@ namespace Cyl.BubbleShooter.Gameplay
 
         private void OnLaunch(InputAction.CallbackContext context)
         {
-            // Ignore input if we are currently launching a bubble
+            // Ignore input if we are currently launching a bubble or if input is not allowed
             if (IsLaunching)
                 return;
             
@@ -343,27 +356,33 @@ namespace Cyl.BubbleShooter.Gameplay
             if (context.performed)
             {
                 IsAiming = true;
-                _currentTrajectory = CalculateTrajectory();
-                HandleTrajectoryView();
+
+                if (AllowInput)
+                {
+                    _currentTrajectory = CalculateTrajectory();
+                    HandleTrajectoryView();
+                }
+                
                 return;
             }
 
             // Once we release the launch action, we launch the bubble
             if (context.canceled)
             {
-                // TODO: Only allow launching if the input is old enough to combat fat-finger inputs
-                HandleBubbleLaunch();
+                if (AllowInput)
+                {
+                    HandleBubbleLaunch();
+                }
                 
                 IsAiming = false;
                 _currentTrajectory = null;
-                
                 HandleTrajectoryView();
             }
         }
         
         private void OnCycleQueue(InputAction.CallbackContext context)
         {
-            if (IsLaunching)
+            if (IsLaunching || !AllowInput)
                 return;
             
             // If the input is performed from a non-keyboard device, we first check if the
@@ -378,7 +397,7 @@ namespace Cyl.BubbleShooter.Gameplay
                 }
             }
             
-            bubbleQueue.CycleQueue();
+            OnCycleQueueRequested?.Invoke();
         }
 
         private void OnDrawGizmosSelected()

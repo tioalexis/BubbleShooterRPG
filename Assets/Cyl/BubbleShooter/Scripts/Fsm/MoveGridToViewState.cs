@@ -11,6 +11,11 @@ namespace Cyl.BubbleShooter.Fsm
     {
         /// <inheritdoc />
         public override string Name => "MoveGridToView";
+        
+        /// <summary>
+        /// How fast the bubble grid moves to the view.
+        /// </summary>
+        public virtual float Duration => 0.5f;
 
         /// <summary>
         /// Move the bubble grid to the view, anchoring it to either the top or bottom edge of the view
@@ -18,20 +23,20 @@ namespace Cyl.BubbleShooter.Fsm
         public override void OnEnter()
         {
             base.OnEnter();
-
-            const float moveDuration = 0.5f;
-            MoveGridToViewAsync(moveDuration)
+            
+            MoveGridToViewAsync(Duration)
                 .FireAndForget();
         }
         
         private Vector3 CalculateAnchorPosition()
         {
-            const int visibleRows = 8;
+            var visibleRows = View.CameraSettings.minVisibleRows;
             var gridTransform = BubbleGrid.RootTransform;
             var topMostRow = BubbleGrid.FindTopMostOccupiedRow(); // top of grid
             var bottomMostRow = BubbleGrid.FindBottomMostOccupiedRow(); // bottom of grid
-            var isAnchoredTop = topMostRow <= BubbleGrid.Height - visibleRows;
-            var offsetPadding = isAnchoredTop ? 50f : 0f;
+            var totalRows = Mathf.Abs(topMostRow - bottomMostRow);
+            var isAnchoredTop = totalRows < visibleRows;
+            var offsetPadding = isAnchoredTop ? -BubbleGrid.CellInnerRadius : 0f;
             var anchoredRow = isAnchoredTop ? topMostRow : bottomMostRow;
             var anchorPosition = isAnchoredTop ? View.TopEdgeAnchor.position : View.BottomEdgeAnchor.position;
             var anchoredRowPosition = BubbleGrid.GetWorldPosition(0, anchoredRow);
