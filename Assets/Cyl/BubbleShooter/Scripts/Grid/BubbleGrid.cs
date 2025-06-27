@@ -45,6 +45,10 @@ namespace Cyl.BubbleShooter.Grid
     /// </summary>
     public class BubbleGrid : HexGrid<Bubble>
     {
+        public Action<Bubble> OnBubbleAdded;
+        
+        public Action<Bubble> OnBubbleRemoved;
+        
         [SerializeField] private int width = 11;
         [SerializeField] private int height = 20;
         [SerializeField] private float scale = 1f;
@@ -92,6 +96,8 @@ namespace Cyl.BubbleShooter.Grid
             element.transform.localScale = Vector3.one * CellUnitScale;
             element.SetColliderEnabled(true);
             
+            OnBubbleAdded?.Invoke(element);
+            
             return true;
         }
 
@@ -114,6 +120,8 @@ namespace Cyl.BubbleShooter.Grid
                 element.transform.SetParent(null);
                 element.transform.localScale = Vector3.one * CellUnitScale;
                 element.SetColliderEnabled(false);
+                
+                OnBubbleRemoved?.Invoke(element);
             }
             
             return true;
@@ -257,7 +265,28 @@ namespace Cyl.BubbleShooter.Grid
             return result;
         }
         
-        
+        /// <summary>
+        /// Counts the number of bubbles in the grid.
+        /// Optionally, you can provide a criteria to only count bubbles that match certain conditions.
+        /// </summary>
+        /// <param name="criteria">The criteria to filter bubbles. If null, all bubbles will be counted.</param>
+        /// <returns>The total number of bubbles in the grid that do not match the exclude criteria.</returns>
+        public int CountBubbles(Predicate<Bubble> criteria = null)
+        {
+            var count = 0;
+            for (var row = 0; row < Height; row++)
+            for (var col = 0; col < Width; col++)
+            {
+                var bubble = GetElement(col, row);
+                if (bubble == null)
+                    continue;
+                if (criteria != null && !criteria(bubble))
+                    continue;
+                
+                count++;
+            }
+            return count;
+        }
 
         private bool IsBubbleAnchored(Bubble bubble)
         {
