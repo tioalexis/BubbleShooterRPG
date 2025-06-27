@@ -7698,6 +7698,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 1716766534}
+  - component: {fileID: 1716766535}
   m_Layer: 12
   m_Name: RemainingGoalPanel
   m_TagString: Untagged
@@ -7721,6 +7722,20 @@ Transform:
   - {fileID: 896198147}
   m_Father: {fileID: 674966377}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1716766535
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1716766533}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: dfeba6494c96426098a3e5f236fcfa9e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  bubbleGrid: {fileID: 453118086}
+  remainingBubblesText: {fileID: 125168117}
 --- !u!1 &1795751006
 GameObject:
   m_ObjectHideFlags: 0
