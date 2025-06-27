@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using Cyl.BubbleShooter.BubbleComponents;
 using Cyl.BubbleShooter.Bubbles;
 using Cyl.BubbleShooter.Gameplay;
+using Cyl.Common.Utils;
 using Cyl.Hexagons;
 using UnityEngine;
 
@@ -85,9 +86,10 @@ namespace Cyl.BubbleShooter.Grid
                 return false;
             
             var parent = rootTransform ?? transform;
+            element.name = $"Bubble ({col}, {row})";
             element.transform.SetParent(parent);
             element.transform.position = GetWorldPosition(col, row);
-            element.name = $"Bubble ({col}, {row})";
+            element.transform.localScale = Vector3.one * CellUnitScale;
             element.SetColliderEnabled(true);
             
             return true;
@@ -110,6 +112,7 @@ namespace Cyl.BubbleShooter.Grid
             if (element)
             {
                 element.transform.SetParent(null);
+                element.transform.localScale = Vector3.one * CellUnitScale;
                 element.SetColliderEnabled(false);
             }
             
@@ -253,6 +256,8 @@ namespace Cyl.BubbleShooter.Grid
             
             return result;
         }
+        
+        
 
         private bool IsBubbleAnchored(Bubble bubble)
         {

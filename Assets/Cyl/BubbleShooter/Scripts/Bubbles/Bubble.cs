@@ -25,6 +25,11 @@ namespace Cyl.BubbleShooter.Bubbles
         /// The type of the bubble, which is the name of the prefab used to create it.
         /// </summary>
         public string BubbleType { get; set; }
+        
+        /// <summary>
+        /// Whether the bubble is scheduled for despawn.
+        /// </summary>
+        public bool IsScheduledForDespawn { get; set; }
 
         private void Awake()
         {
@@ -105,6 +110,8 @@ namespace Cyl.BubbleShooter.Bubbles
         /// </summary>
         public void OnDespawn()
         {
+            IsScheduledForDespawn = false;
+            
             foreach (var component in _components.Values)
                 component.OnDespawn();
         }
