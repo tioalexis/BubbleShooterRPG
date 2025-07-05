@@ -42,7 +42,17 @@ namespace Cyl.BubbleShooter.Fsm
         /// Invoked when the state is entered.
         /// Override this method to implement custom logic when entering the state.
         /// </summary>
-        public override void OnEnter()
+        public virtual void OnEnter()
+        {
+            OnEnter(null);
+        }
+
+        /// <summary>
+        /// Invoked when the state is entered.
+        /// Override this method to implement custom logic when entering the state.
+        /// </summary>
+        /// <param name="stateChangeParams">Additional parameters for the state change, if any.</param>
+        public override void OnEnter(IStateChangeParams stateChangeParams)
         {
             Debug.Log($"Entered state: {Name}");
             // Intentionally left empty
